@@ -18,8 +18,6 @@
 # u64 addr;
 # u32 access_type
 
-
-
 import json
 import argparse
 from struct import *
@@ -50,7 +48,3 @@ for top in obj['RegisterLists']:
         # diving to the bits, which is I don't want to do now.
         options.output.write(pack('<64sqI', register['Name'][:64].encode('ascii'), int(register['Address'], 16), 32))
 
-#options.output.write(0x57a32bcd.to_bytes(4, byteorder='little'))
-#options.output.write(0x1.to_bytes(4, byteorder='little'))
-#options.output.write(obj['Name'].encode('ascii').to_bytes(32))
-#print(json.dumps(obj, indent=2))
