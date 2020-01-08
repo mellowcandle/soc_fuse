@@ -1,7 +1,7 @@
-bin_PROGRAMS=soc_fuse
+bin_PROGRAMS=socfs
 
-soc_fuse_SOURCES=soc_fuse.c
+socfs_SOURCES=socfs.c
 
-soc_fuse_CFLAGS = $(FUSE3_CFLAGS)
+socfs_CFLAGS = $(FUSE3_CFLAGS)
 
-soc_fuse_LDADD = $(FUSE3_LIBS)
+socfs_LDADD = $(FUSE3_LIBS)

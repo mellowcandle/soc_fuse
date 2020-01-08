@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([soc_fuse], [v1.0], [rfried.dev@gmail.com])
-AC_CONFIG_SRCDIR([soc_fuse.c])
+AC_INIT([socfs], [v1.0], [rfried.dev@gmail.com])
+AC_CONFIG_SRCDIR([socfs.c])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([-Wall -Werror])
