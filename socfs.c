@@ -77,10 +77,10 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
-static int soc_getattr(const char *path, struct stat *stbuf,
-		       struct fuse_file_info *fi)
+#define fuse_log(...)
+
+static int soc_getattr(const char *path, struct stat *stbuf)
 {
-	(void) fi;
 	int res = 0;
 
 	fuse_log(FUSE_LOG_DEBUG, "%s: %s\n", __func__, path);
@@ -145,12 +145,10 @@ static struct reg *find_reg(struct soc_private *private, const char *name)
 }
 
 static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                       off_t offset, struct fuse_file_info *fi,
-                       enum fuse_readdir_flags flags)
+                       off_t offset, struct fuse_file_info *fi)
 {
 	(void) offset;
 	(void) fi;
-	(void) flags;
 	int i;
 	struct soc_private *private = fuse_get_context()->private_data;
 	struct top *top;
@@ -159,12 +157,12 @@ static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	if (!strcmp(path, "/")) {
 
-		filler(buf, ".", NULL, 0, 0);
-		filler(buf, "..", NULL, 0, 0);
+		filler(buf, ".", NULL, 0);
+		filler(buf, "..", NULL, 0);
 
 		top = private->header->tops;
 		for (i = 0; i < private->header->top_count; i++) {
-			filler(buf, top->name, NULL, 0, 0);
+			filler(buf, top->name, NULL, 0);
 			top = (struct top *)((char *)private->header +
 			                     top->next_offset);
 		}
@@ -177,11 +175,11 @@ static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			return -ENOENT;
 		}
 
-		filler(buf, ".", NULL, 0, 0);
-		filler(buf, "..", NULL, 0, 0);
+		filler(buf, ".", NULL, 0);
+		filler(buf, "..", NULL, 0);
 
 		for (i = 0; i < top->reg_count; i++)
-			filler(buf, top->regs[i].name, NULL, 0, 0);
+			filler(buf, top->regs[i].name, NULL, 0);
 
 		return 0;
 	}

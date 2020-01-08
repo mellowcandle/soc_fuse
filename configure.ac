@@ -14,9 +14,9 @@ AC_PROG_CC
 # Checks for libraries.
 #AC_CHECK_LIB([fuse3], [fuse_main])
 
-PKG_CHECK_MODULES(FUSE3, fuse3 >= 3.0)
-AC_SUBST(FUSE3_CFLAGS)
-AC_SUBST(FUSE3_LIBS)
+PKG_CHECK_MODULES(FUSE, fuse >= 2.9)
+AC_SUBST(FUSE_CFLAGS)
+AC_SUBST(FUSE_LIBS)
 
 AC_CHECK_LIB([pthread], [pthread_create])
 

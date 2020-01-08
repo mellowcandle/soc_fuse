@@ -2,6 +2,6 @@ bin_PROGRAMS=socfs
 
 socfs_SOURCES=socfs.c
 
-socfs_CFLAGS = $(FUSE3_CFLAGS)
+socfs_CFLAGS = $(FUSE_CFLAGS)
 
-socfs_LDADD = $(FUSE3_LIBS)
+socfs_LDADD = $(FUSE_LIBS)
