@@ -77,7 +77,7 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
-#define fuse_log(...)
+#define fuse_log(a,b,...) fprintf(stderr, b, ##__VA_ARGS__)
 
 static int soc_getattr(const char *path, struct stat *stbuf)
 {
