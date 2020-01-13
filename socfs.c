@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include "misc.h"
 
 #define MAX_SOC_NAME 32
 #define MAX_REG_NAME 64
@@ -92,7 +93,7 @@ static int soc_getattr(const char *path, struct stat *stbuf)
 	} else {
 		stbuf->st_mode = S_IFREG | 0666;
 		stbuf->st_nlink = 1;
-		stbuf->st_size = 4; //todo: fix this.
+		stbuf->st_size = 256; //todo: fix this.
 	}
 
 	return res;
@@ -230,8 +231,10 @@ static int soc_read(const char *path, char *buf, size_t size, off_t offset,
 	struct soc_private *private = fuse_get_context()->private_data;
 	struct reg *reg;
 	struct mem_map map;
+	uint64_t result;
 
-	fuse_log(FUSE_LOG_DEBUG, "%s: %s\n", __func__, path);
+	fuse_log(FUSE_LOG_DEBUG, "%s: path: %s size: %u offset: %u\n", __func__,
+		 path, size, offset);
 
 	reg = find_reg(private, path);
 
@@ -243,23 +246,25 @@ static int soc_read(const char *path, char *buf, size_t size, off_t offset,
 
 	switch (reg->width) {
 	case 8:
-		*(uint8_t *)buf = *(volatile uint8_t *)map.virt_addr;
+		result = *(volatile uint8_t *)map.virt_addr;
 		break;
 	case 16:
-		*(uint16_t *)buf = *(volatile uint16_t *)map.virt_addr;
+		result = *(volatile uint16_t *)map.virt_addr;
 		break;
 	case 32:
-		*(uint32_t *)buf = *(volatile uint32_t *)map.virt_addr;
+		result = *(volatile uint32_t *)map.virt_addr;
 		break;
 	case 64:
-		*(uint64_t *)buf = *(volatile uint64_t *)map.virt_addr;
+		result = *(volatile uint64_t *)map.virt_addr;
 		break;
 	default:
+		fprintf(stderr, "Reg width is wrong: %d\n", reg->width);
 		return -EFAULT;
 	}
+
 	unmap_mem(&map);
 
-	return reg->width;
+	return sprintf(buf, "0x%llx -> 0x%llx\n", reg->addr, result);
 }
 
 static int soc_write(const char *path, const char *buf, size_t size,
@@ -267,7 +272,7 @@ static int soc_write(const char *path, const char *buf, size_t size,
 {
 	struct soc_private *private = fuse_get_context()->private_data;
 	struct reg *reg;
-	int writeval;
+	uint64_t writeval;
 	struct mem_map map;
 
 	fuse_log(FUSE_LOG_DEBUG, "%s: %s\n", __func__, path);
@@ -277,12 +282,12 @@ static int soc_write(const char *path, const char *buf, size_t size,
 	if (!reg)
 		return -ENOENT;
 
-	writeval = atoi(buf);
+	parse_input(buf, &writeval);
 
 	if (map_mem(private, &map, reg->addr, 4))
 		return -EFAULT;
 
-	fuse_log(FUSE_LOG_INFO, "Writing 0x%lx to %s at %llx\n", writeval,
+	fuse_log(FUSE_LOG_INFO, "Writing 0x%llx to %s at %llx\n", writeval,
 		 reg->name, reg->addr);
 
 	switch (reg->width) {
@@ -304,7 +309,20 @@ static int soc_write(const char *path, const char *buf, size_t size,
 
 	unmap_mem(&map);
 
-	return reg->width;
+	return reg->width / 4;
+}
+static int soc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+	struct soc_private *private = fuse_get_context()->private_data;
+	struct reg *reg;
+
+	fuse_log(FUSE_LOG_DEBUG, "%s: %s\n", __func__, path);
+
+	reg = find_reg(private, path);
+	if (!reg)
+		return -EPERM;
+
+	return 0;
 }
 
 static struct fuse_operations soc_oper = {
@@ -312,6 +330,7 @@ static struct fuse_operations soc_oper = {
 	.readdir	= soc_readdir,
 	.read		= soc_read,
 	.write		= soc_write,
+	.create		= soc_create,
 };
 
 static void show_help(const char *progname)
