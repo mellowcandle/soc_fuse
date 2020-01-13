@@ -1,10 +1,18 @@
 /*
   FUSE: Filesystem in Userspace
-  Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
+  Copyright (C) 2020 Ramon Fried <rfried.dev@gmail.com>
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
 */
+
+#include "config.h"
+
+#ifdef HAVE_FUSE3
 #define FUSE_USE_VERSION 31
+#else
+#define FUSE_USE_VERSION 29
+#endif
+
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,9 +86,18 @@ static const struct fuse_opt option_spec[] = {
 	FUSE_OPT_END
 };
 
+#ifdef HAVE_FUSE2
+/* fuse_log is not available under FUSE3 */
 #define fuse_log(a,b,...) fprintf(stderr, b, ##__VA_ARGS__)
+#define filler(a, b, c, d, e) filler(a, b, c, d)
+#endif
 
+#ifdef HAVE_FUSE2
 static int soc_getattr(const char *path, struct stat *stbuf)
+#else
+static int soc_getattr(const char *path, struct stat *stbuf,
+		       struct fuse_file_info *fi)
+#endif
 {
 	int res = 0;
 
@@ -145,8 +162,14 @@ static struct reg *find_reg(struct soc_private *private, const char *name)
 	return NULL;
 }
 
+#ifdef HAVE_FUSE2
 static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
+#else
+static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+                       off_t offset, struct fuse_file_info *fi,
+		       enum fuse_readdir_flags flags)
+#endif
 {
 	(void) offset;
 	(void) fi;
@@ -158,12 +181,12 @@ static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	if (!strcmp(path, "/")) {
 
-		filler(buf, ".", NULL, 0);
-		filler(buf, "..", NULL, 0);
+		filler(buf, ".", NULL, 0, 0);
+		filler(buf, "..", NULL, 0, 0);
 
 		top = private->header->tops;
 		for (i = 0; i < private->header->top_count; i++) {
-			filler(buf, top->name, NULL, 0);
+			filler(buf, top->name, NULL, 0, 0);
 			top = (struct top *)((char *)private->header +
 			                     top->next_offset);
 		}
@@ -176,11 +199,11 @@ static int soc_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			return -ENOENT;
 		}
 
-		filler(buf, ".", NULL, 0);
-		filler(buf, "..", NULL, 0);
+		filler(buf, ".", NULL, 0, 0);
+		filler(buf, "..", NULL, 0, 0);
 
 		for (i = 0; i < top->reg_count; i++)
-			filler(buf, top->regs[i].name, NULL, 0);
+			filler(buf, top->regs[i].name, NULL, 0, 0);
 
 		return 0;
 	}
@@ -282,7 +305,10 @@ static int soc_write(const char *path, const char *buf, size_t size,
 	if (!reg)
 		return -ENOENT;
 
-	parse_input(buf, &writeval);
+	if (parse_input(buf, &writeval)) {
+		fuse_log(FUSE_LOG_ERR, "Can't parse write value\n");
+		return -EINVAL;
+	}
 
 	if (map_mem(private, &map, reg->addr, 4))
 		return -EFAULT;
@@ -309,19 +335,17 @@ static int soc_write(const char *path, const char *buf, size_t size,
 
 	unmap_mem(&map);
 
-	return reg->width / 4;
+	return size;
 }
-static int soc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+
+#ifdef HAVE_FUSE2
+static int soc_truncate(const char *path, off_t offset)
+#else
+static int soc_truncate(const char *path, off_t offset,
+			struct fuse_file_info *fi)
+#endif
 {
-	struct soc_private *private = fuse_get_context()->private_data;
-	struct reg *reg;
-
 	fuse_log(FUSE_LOG_DEBUG, "%s: %s\n", __func__, path);
-
-	reg = find_reg(private, path);
-	if (!reg)
-		return -EPERM;
-
 	return 0;
 }
 
@@ -330,7 +354,7 @@ static struct fuse_operations soc_oper = {
 	.readdir	= soc_readdir,
 	.read		= soc_read,
 	.write		= soc_write,
-	.create		= soc_create,
+	.truncate	= soc_truncate,
 };
 
 static void show_help(const char *progname)

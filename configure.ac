@@ -11,10 +11,14 @@ AM_INIT_AUTOMAKE([-Wall -Werror])
 # Checks for programs.
 AC_PROG_CC
 
-# Checks for libraries.
-#AC_CHECK_LIB([fuse3], [fuse_main])
+# First try to find FUSE3, if not found go with FUSE2
+PKG_CHECK_MODULES([FUSE], [fuse3 >= 3.1],
+  [AC_DEFINE([HAVE_FUSE3], [1], [Use FUSE 3])],
+  [PKG_CHECK_MODULES(FUSE, [fuse >= 2.9],
+    [AC_DEFINE([HAVE_FUSE2], [1], [Use FUSE 2])
+  ])
+])
 
-PKG_CHECK_MODULES(FUSE, fuse >= 2.9)
 AC_SUBST(FUSE_CFLAGS)
 AC_SUBST(FUSE_LIBS)
 

@@ -3,6 +3,12 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Use FUSE 2 */
+#undef HAVE_FUSE2
+
+/* Use FUSE 3 */
+#undef HAVE_FUSE3
+
 /* Define to 1 if you have the `getpagesize' function. */
 #undef HAVE_GETPAGESIZE
 
